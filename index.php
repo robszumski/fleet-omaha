@@ -1,20 +1,22 @@
 <?php
 
 global $debug;
-$debug = true;
+$debug = false;
 
 $clientInformation = array(
   "platform" => "CoreOS"
 );
 
 $applications = array(
-  "test1" => array(
+  array(
+    "name" => "test1",
     "appId" => "A5B0D8E8-D440-40AD-A76D-BB20BE23AAB3",
     "version" => "1.0.0",
     "groupId" => "84f537ab-b350-456e-abe8-5fe948fa7797",
     "imageName" => "image"
   ),
-  "test2" => array(
+  array(
+    "name" => "test2",
     "appId" => "6D01B95F-CF13-458A-8087-231833382E13",
     "version" => "1.0.0",
     "groupId" => "beta-DL360G4",
@@ -26,8 +28,8 @@ function compileXMLPayload($clientInformation, $applications) {
   $payload = '<?xml version="1.0" encoding="UTF-8"?>';
   $payload .= '<request protocol="3.0">';
   $payload .= '<os platform="' . $clientInformation['platform'] . '" version="lsb"></os>';
-  foreach($applications as $appId => $app) {
-    $payload .= '<app appid="' . $app['appId'] . '" version="' . $app['version'] . '" track="' . $app['groupId'] . '" bootid="' . $appId . '">';
+  foreach($applications as $app) {
+    $payload .= '<app appid="' . $app['appId'] . '" version="' . $app['version'] . '" track="' . $app['groupId'] . '" bootid="' . $app['name'] . '">';
     $payload .= '<event eventtype="3" eventresult="2"></event>';
     $payload .= '</app>';
   }
@@ -59,15 +61,33 @@ function executeUpdateRequest($payload, $updateServerAddress){
 }
 
 function processUpdateResponse($response, $applications) {
-  foreach($response->app as $app){
-    print_r($app);
+  $appsNeedingUpdates = [];
+  foreach($response->app as $appUpdate){
+    foreach($applications as $appRunning) {
+      $appRunningId = (string)$appUpdate->attributes()["appid"];
+      if($appRunning["appId"] == $appRunningId) {
+        $newImageName = (string)$appUpdate->updatecheck->urls->url->attributes()->codebase;
+        $newVersion = (string)$appUpdate->updatecheck->manifest->attributes()->version;
+        $appMerged = array(
+          "name" => $appRunning["name"],
+          "appId" => $appRunningId,
+          "oldVersion" => $appRunning["version"],
+          "newVersion" => $newVersion,
+          "groupId" => $appRunning["groupId"],
+          "oldImageName" => $appRunning["imageName"],
+          "newImageName" => $newImageName
+        );
+        array_push($appsNeedingUpdates, $appMerged);
+      }
+    }
   }
+  return $appsNeedingUpdates;
 }
 
 $updatePayload = compileXMLPayload($clientInformation, $applications);
 $updateResponse = executeUpdateRequest($updatePayload, "http://localhost:8000/v1/update/");
 $appsNeedingUpdates = processUpdateResponse($updateResponse, $applications);
 
-//print_r($appsNeedingUpdates);
+print_r($appsNeedingUpdates);
 
 ?>
