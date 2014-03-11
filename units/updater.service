@@ -1,0 +1,10 @@
+[Service]
+ExecStart=/bin/bash -c '/usr/bin/docker start -a updater-{{app.name}} || /usr/bin/docker run -rm -name updater-{{app.name}} index.robszumski.com:5000/updater /bin/php updater.php {{app.name}} {{app.appid}} {{app.groupid}} {{app.version}}'
+ExecStop=/usr/bin/docker stop robszumski1
+
+[Unit]
+After=docker.service
+Description=Updater
+
+[X-Fleet]
+X-ConditionMachineOf={{app.unit}}

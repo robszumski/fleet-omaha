@@ -1,0 +1,10 @@
+[Service]
+ExecStart=/bin/bash -c '/usr/bin/docker start -a robszumski1 || /usr/bin/docker run -rm -name robszumski1 -p 8083:80 index.robszumski.com:5000/robszumski /bin/sh /root/boot.sh'
+ExecStop=/usr/bin/docker stop robszumski1
+
+[Unit]
+After=docker.service
+Description=robszumski.com
+
+[X-Fleet]
+X-Conflicts=robszumski*.service

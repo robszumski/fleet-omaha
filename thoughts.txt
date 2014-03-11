@@ -1,0 +1,41 @@
+updater@robszumski.1.service
+----------------------------
+start: updater -name robszumski.1.service -appid APP123 -groupid GROUP123
+
+if(name) {
+  startUpdateCycle()
+} else {
+  packageUnit = fetchUpdate()
+  startUpdater(name, appid, groupid)
+}
+
+startUpdater(name, appid, groupid) {
+  updateUnit = generateUpdateUnit(name, appid, groupid)
+  startUnit("updater@" + name, updateUnit)
+}
+
+startUpdateCycle(name, appid, groupid) {
+  updatesNeeded = requestUpdates(name, appid, groupid)
+  if(updatesNeeded) {
+    startUpdater(name, appid, groupid);
+    updateComplete = watch(etcdPath, name) //if name shows up in response, return true
+    if (updateComplete) {
+      destroy(name, updater@name) //exit
+    }
+  }
+}
+
+startUnit(name, unit) {
+  newFile = writeFile(name, unit);
+  fleetctl start newFile
+}
+
+
+
+watcher
+-------
+start: watcher
+
+receivePOST(name, unit) {
+  startUnit(name, unit)
+}
